@@ -216,10 +216,25 @@ def get_task_command(task_id, edges, nodes):
                     lilypond_includes_abs = lilypond_includes_path.resolve()
                     
                     # Insert the lilypond volume right after "docker run"
-                    command = command.replace('docker run', f'docker run -v {lilypond_includes_abs}:/work/includes')
+                    # command = command.replace('docker run', f'docker run -v {lilypond_includes_abs}:/work/includes')
+                    # MOD: Add mount bind to solmisasi-lily and partitur
+                    solmisasi_lily_path = Path(__file__).parent / ".." / ".." / "solmisasi-lily"
+                    solmisasi_lily_abs = solmisasi_lily_path.resolve()
+                    partitur_path = Path(__file__).parent / ".." / ".." / "henriyulianto.github.io" / "partitur"
+                    partitur_abs = partitur_path.resolve()
+                    mounts = (f'-v {lilypond_includes_abs}:/work/includes ',
+                              f'-v {solmisasi_lily_abs}:/work/solmisasi-lily',
+                              f'-v {partitur_abs}:/work/partitur')
+                    command = command.replace('docker run', f'docker run {" ".join(mounts)}')
                     
                     # Replace INCLUDES marker with the actual include flag
-                    command = command.replace('INCLUDES', '-I /work/includes')
+                    # command = command.replace('INCLUDES', '-I /work/includes')
+                    # MOD: Append solmisasi-lily/lib and partitur to Lilypond include path
+                    command = command.replace(
+                        'INCLUDES',
+                        " ".join(('-I /work/includes', 
+                                  '-I /work/solmisasi-lily/lib',
+                                  '-I /work/partitur')))
                                             
                     return f'f"{command}"'
                 
