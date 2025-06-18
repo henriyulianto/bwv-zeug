@@ -243,7 +243,8 @@ def remove_unwanted_hrefs(input_path: Path, output_path: Path):
     rect_anchor_count = 0
     pattern_anchor_count = 0
     grace_note_count = 0
-    
+    solmisasi_count = 0
+
     # Find all anchor elements using XPath with proper namespaces
     for anchor_element in svg_root.findall(".//svg:a", NAMESPACE_MAP):
         total_anchor_count += 1
@@ -252,6 +253,9 @@ def remove_unwanted_hrefs(input_path: Path, output_path: Path):
         contains_text = anchor_element.find(".//svg:text", NAMESPACE_MAP) is not None
         contains_rect = anchor_element.find(".//svg:rect", NAMESPACE_MAP) is not None
         contains_path = anchor_element.find(".//svg:path", NAMESPACE_MAP) is not None
+        
+        # Check solmisasi
+        is_solmisasi = parent_map.get(anchor_element).get("class") == "notangka"
         
         # Check for tie-related data attributes (preserve these!)
         # Check the anchor itself, its children, AND its parents
@@ -284,12 +288,17 @@ def remove_unwanted_hrefs(input_path: Path, output_path: Path):
             pattern_anchor_count += 1
             if "grace-init.ly" in data_ref_value:
                 grace_note_count += 1
+        if is_solmisasi:
+            solmisasi_count += 1
         
         # CONSERVATIVE LOGIC: Only remove data-ref if:
         # 1. It matches unwanted patterns (system files) AND has no tie attributes, OR
         # 2. It contains text/rect BUT NO path elements AND NO tie attributes (pure annotations)
         # PRESERVE: Any anchor with path elements OR tie attributes
-        is_pure_annotation = (contains_text or contains_rect) and not contains_path and not has_tie_attributes
+        is_pure_annotation = (contains_text or contains_rect) and \
+                             not contains_path and \
+                             not has_tie_attributes and \
+                             not is_solmisasi
         should_remove = (matches_unwanted_pattern and not has_tie_attributes) or is_pure_annotation
         
         if should_remove and "data-ref" in anchor_element.attrib:
@@ -298,6 +307,7 @@ def remove_unwanted_hrefs(input_path: Path, output_path: Path):
                 
     print(f"   📊 Link removal analysis:")
     print(f"      Total anchors found: {total_anchor_count}")
+    print(f"      Total NOT ANGKA found: {solmisasi_count}")
     print(f"      Anchors with text elements: {text_anchor_count}")
     print(f"      Anchors with rect elements: {rect_anchor_count}")
     print(f"      Anchors matching unwanted patterns: {pattern_anchor_count}")

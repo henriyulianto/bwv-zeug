@@ -643,9 +643,34 @@ def clean_svg(svg_root):
         
         # Count all path elements inside this <a>
         path_elements = []
+        
+        # solmisasi-lily accidental line
+        accidental_line_elements = []
+        
         for child in a_elem:
             if child.tag == 'path' or child.tag.endswith('}path'):
                 path_elements.append(child)
+            if child.tag == 'line' or child.tag.endswith('}line'):
+                accidental_line_elements.append(child)
+        
+        if len(accidental_line_elements) == 1:
+            line_elem = accidental_line_elements[0]
+            print(f"Processing accidental line: {data_ref} -> {simplified_ref}")
+            new_line = ET.Element('line')
+            for attr, value in line_elem.attrib.items():
+                if attr != 'fill':  # Skip fill attribute (will be handled by CSS)
+                    new_line.set(attr, value)
+            # Add data-ref attribute for JavaScript targeting
+            new_line.set('data-ref', simplified_ref)
+            parent = parent_map.get(a_elem)
+            if parent is not None:
+                # Insert new path element at the same position as the <a>
+                a_index = list(parent).index(a_elem)
+                parent.insert(a_index, new_line)
+                # Remove the <a> element
+                # parent.remove(a_elem)
+            else:
+                print(f"Warning: Could not find parent for <a> element")
         
         if len(path_elements) == 1:
             # Single path: current behavior (flatten to path with data-ref)
@@ -701,6 +726,7 @@ def clean_svg(svg_root):
                 
         else:
             print(f"Warning: No path found in <a> element with data-ref {data_ref}")
+            
             
     print(f"Successfully processed {len(elements_to_process)} note elements")
     

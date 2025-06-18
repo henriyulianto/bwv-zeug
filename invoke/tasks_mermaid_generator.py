@@ -218,10 +218,10 @@ def get_task_command(task_id, edges, nodes):
                     # Insert the lilypond volume right after "docker run"
                     # command = command.replace('docker run', f'docker run -v {lilypond_includes_abs}:/work/includes')
                     # MOD: Add mount bind to solmisasi-lily and partitur
-                    solmisasi_lily_path = Path(__file__).parent / ".." / ".." / "solmisasi-lily"
-                    solmisasi_lily_abs = solmisasi_lily_path.resolve()
-                    partitur_path = Path(__file__).parent / ".." / ".." / "henriyulianto.github.io" / "partitur"
-                    partitur_abs = partitur_path.resolve()
+                    # solmisasi_lily_path = Path(__file__).parent / ".." / ".." / "solmisasi-lily"
+                    solmisasi_lily_abs = '/mnt/e/github.com/henriyulianto/solmisasi-lily'
+                    # partitur_path = Path(__file__).parent / ".." / ".." / "henriyulianto.github.io" / "partitur"
+                    partitur_abs = '/mnt/e/github.com/henriyulianto/henriyulianto.github.io/partitur'
                     mounts = (f'-v {lilypond_includes_abs}:/work/includes ',
                               f'-v {solmisasi_lily_abs}:/work/solmisasi-lily',
                               f'-v {partitur_abs}:/work/partitur')
