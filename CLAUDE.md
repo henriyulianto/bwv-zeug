@@ -73,7 +73,7 @@ The complete workflow transforms LilyPond scores through these stages:
 
 1. **LilyPond Compilation** - PDF, SVG, and MIDI generation via Docker
 2. **SVG Processing** - Link cleanup, animation preparation, optimization
-3. **Data Extraction** - Noteheads, ties, and MIDI events (parallel processing)
+3. **Data Extraction** - Noteheads, ties, and MIDI events
 4. **Data Alignment** - Synchronize MIDI timing with visual positions
 5. **Sync Generation** - Create unified YAML timing data
 
@@ -86,8 +86,7 @@ The complete workflow transforms LilyPond scores through these stages:
 - **ANTLR4** for Mermaid diagram parsing
 
 ### Audio Processing (Optional)
-- **Conda environment** with librosa for audio segmentation
-- **Virtual environment** with madmom for beat detection
+- **Conda environment** with librosa & madmom for audio segmentation and beat detection
 
 ### Python Packages
 Key packages include: invoke, antlr4-python3-runtime, pandas, pyyaml, lxml
@@ -112,7 +111,6 @@ Key packages include: invoke, antlr4-python3-runtime, pandas, pyyaml, lxml
 **Never commit these generated files:**
 - `invoke/tasks_generated.py`
 - `invoke/antlr/` compiled parsers
-- `*/exports/` directories
 - `.build_cache.json`
 
 **Always commit:**
