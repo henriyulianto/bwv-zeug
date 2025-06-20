@@ -565,6 +565,11 @@ def clean_svg(svg_root):
             fill: currentColor;
         }
         
+        /* Solmisasi note heads */
+        a.notangka {
+            fill: currentColor;
+        }
+        
         /* Staff lines and other paths */
         path:not([data-ref]) {
             fill: currentColor;
