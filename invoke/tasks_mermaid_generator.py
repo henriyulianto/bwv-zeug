@@ -219,9 +219,8 @@ def get_task_command(task_id, edges, nodes):
                     # command = command.replace('docker run', f'docker run -v {lilypond_includes_abs}:/work/includes')
                     # MOD: Add mount bind to solmisasi-lily and partitur
                     solmisasi_lily_abs = '/mnt/e/github.com/henriyulianto/solmisasi-lily'
-                    partitur_abs = '/mnt/e/github.com/henriyulianto/partitur/includes/lilypond'
-                    mounts = (f'-v {lilypond_includes_abs}:/work/includes ',
-                              f'-v {solmisasi_lily_abs}:/work/solmisasi-lily',
+                    partitur_abs = '/mnt/e/github.com/henriyulianto/partitur/lilypond'
+                    mounts = (f'-v {solmisasi_lily_abs}:/work/solmisasi-lily',
                               f'-v {partitur_abs}:/work/partitur')
                     command = command.replace('docker run', f'docker run {" ".join(mounts)}')
                     
@@ -230,8 +229,7 @@ def get_task_command(task_id, edges, nodes):
                     # MOD: Append solmisasi-lily/lib and partitur to Lilypond include path
                     command = command.replace(
                         'INCLUDES',
-                        " ".join(('-I /work/includes', 
-                                  '-I /work/solmisasi-lily/lib',
+                        " ".join(('-I /work/solmisasi-lily/lib',
                                   '-I /work/partitur')))
                                             
                     return f'f"{command}"'
