@@ -2,7 +2,7 @@
 """
 extract_note_heads.py
 
-SVG Musical Notehead Extraction Pipeline  
+SVG Musical Notehead Extraction Pipeline
 ========================================
 
 This script extracts notehead positions and pitch information from SVG files
@@ -52,28 +52,29 @@ from _scripts_utils import save_dataframe_with_lilypond_csv, get_project_name
 # PROJECT CONFIGURATION LOADING
 # =============================================================================
 
+
 def load_project_tolerance():
     """
     Load tolerance configuration from project-specific YAML file.
-    
+
     This function implements a graceful configuration loading system:
     1. Uses the existing get_project_name() from _scripts_utils
     2. Looks for PROJECT_NAME.yaml in the current directory
     3. Extracts tolerance value from YAML if file exists
     4. Falls back to default tolerance of 1.0 if no config or errors
-    
+
     The YAML file format expected:
         tolerance: 1.5
         # Other project settings can be added here
-    
+
     Returns:
         float: Tolerance value for chord grouping (default: 1.0)
     """
     project_name = get_project_name()
     config_file = Path(f"{project_name}.yaml")
-    
+
     print(f"🔍 Looking for project config: {config_file}")
-    
+
     if config_file.exists():
         try:
             import yaml
@@ -84,15 +85,17 @@ def load_project_tolerance():
                 print(f"⚙️  Using tolerance from config: {tolerance}")
                 return tolerance
         except ImportError:
-            print(f"⚠️  Warning: PyYAML not installed, cannot read {config_file}")
+            print(
+                f"⚠️  Warning: PyYAML not installed, cannot read {config_file}")
             print(f"   Install with: pip install PyYAML")
         except Exception as e:
             print(f"⚠️  Warning: Could not load {config_file}: {e}")
             print(f"   Using default tolerance")
     else:
         print(f"📝 No config file found, using default tolerance")
-    
+
     return 1.0  # Default tolerance
+
 
 # =============================================================================
 # LILYPOND PITCH PATTERN MATCHING - V2
@@ -105,7 +108,7 @@ note_regex = re.compile(r"""
             ^                 # start of string
             ([a-g])           # pitch letter
             (isis|eses|is|es)?# optional accidentals
-            \s*               # optional whitespace  
+            \s*               # optional whitespace
             [,']*             # optional octave marks
         """, re.VERBOSE)
 
@@ -113,42 +116,44 @@ note_regex = re.compile(r"""
 # BAR DATA EXTRACTION FOR BEAT TIMING
 # =============================================================================
 
+
 def extract_bar_data_from_svg(root, ns):
     """
     Extract bar positions and timing data from SVG elements.
-    
+
     Args:
         root: ElementTree root element of the SVG
         ns: Namespace dictionary for SVG parsing
-    
+
     Returns:
         List of dictionaries with bar data: [{'bar_number': int, 'x_position': float, 'moment_main': str, 'moment_grace': str}]
     """
     bars = []
-    
+
     # Find all elements with data-bar attributes
     for elem in root.iter():
         if 'data-bar' in elem.attrib:
             try:
                 bar_num = int(elem.attrib['data-bar'])
-                
+
                 # Extract x position from transform attribute in child elements
                 x_pos = None
                 for child in elem.iter():
                     if 'transform' in child.attrib:
-                        # Parse transform="translate(x, y)" 
-                        match = re.search(r'translate\(([\d.]+),', child.attrib['transform'])
+                        # Parse transform="translate(x, y)"
+                        match = re.search(
+                            r'translate\(([\d.]+),', child.attrib['transform'])
                         if match:
                             x_pos = float(match.group(1))
                             break
-                
+
                 if x_pos is not None:
                     # Handle anacrusis (pickup) bars which may not have moment attributes
                     moment_main = elem.attrib.get('data-bar-moment-main')
                     if moment_main is None:
                         # Anacrusis bar - assign default moment of "0"
                         moment_main = "0"
-                    
+
                     bar_data = {
                         'bar_number': bar_num,
                         'x_position': x_pos,
@@ -156,13 +161,13 @@ def extract_bar_data_from_svg(root, ns):
                         'moment_grace': elem.attrib.get('data-bar-moment-grace', '0')
                     }
                     bars.append(bar_data)
-                    
+
             except (ValueError, TypeError):
                 continue  # Skip invalid bar numbers
-    
+
     # Sort bars by x position (left to right) and remove duplicates
     bars.sort(key=lambda b: b['x_position'])
-    
+
     # Keep only the leftmost occurrence of each bar number
     unique_bars = []
     seen_bars = set()
@@ -170,18 +175,19 @@ def extract_bar_data_from_svg(root, ns):
         if bar['bar_number'] not in seen_bars:
             unique_bars.append(bar)
             seen_bars.add(bar['bar_number'])
-    
+
     return unique_bars
+
 
 def assign_bar_timing_to_noteheads(notehead_data, bars, tolerance):
     """
     Assign bar timing to noteheads that are leftmost in their respective bars.
-    
+
     Args:
         notehead_data: List of notehead dictionaries with x, y, data_ref, snippet
         bars: List of bar data from extract_bar_data_from_svg()
         tolerance: X-coordinate tolerance for grouping noteheads
-    
+
     Returns:
         Modified notehead_data with bar_moment and bar added to leftmost noteheads
     """
@@ -191,21 +197,21 @@ def assign_bar_timing_to_noteheads(notehead_data, bars, tolerance):
             notehead['bar_moment'] = None
             notehead['bar'] = None
         return notehead_data
-    
+
     # Initialize all noteheads with empty bar fields
     for notehead in notehead_data:
         notehead['bar_moment'] = None
         notehead['bar'] = None
-    
+
     # Sort bars by x position to ensure proper processing order
     bars_sorted = sorted(bars, key=lambda b: b['x_position'])
-    
+
     # For each bar, find noteheads that belong to it and assign beat timing
     for bar in bars_sorted:
         bar_x = bar['x_position']
         bar_moment = bar['moment_main']
         bar_number = bar['bar_number']
-        
+
         # Find noteheads that are close to this bar's x position
         # Use a range-based approach: from this bar to the next bar
         next_bar_x = None
@@ -213,7 +219,7 @@ def assign_bar_timing_to_noteheads(notehead_data, bars, tolerance):
             if other_bar['x_position'] > bar_x:
                 next_bar_x = other_bar['x_position']
                 break
-        
+
         # Define the range for this bar
         if next_bar_x is not None:
             # Midpoint between current and next bar
@@ -221,12 +227,12 @@ def assign_bar_timing_to_noteheads(notehead_data, bars, tolerance):
         else:
             # Last bar - use a large range
             bar_range_end = float('inf')
-        
+
         # Find all noteheads in this bar's range
         bar_noteheads = []
         for notehead in notehead_data:
             notehead_x = notehead['x']
-            
+
             # For the first bar, be more generous with the lower bound
             if bar == bars_sorted[0]:  # First bar
                 # Include noteheads from the beginning up to midpoint to next bar
@@ -236,63 +242,65 @@ def assign_bar_timing_to_noteheads(notehead_data, bars, tolerance):
                 # Regular bars: from bar position to midpoint to next bar
                 if bar_x <= notehead_x < bar_range_end:
                     bar_noteheads.append(notehead)
-        
+
         if not bar_noteheads:
             continue
-        
+
         # Sort noteheads in this bar by x position
         bar_noteheads.sort(key=lambda n: n['x'])
-        
+
         # Find leftmost group using tolerance-based chord detection
         leftmost_x = bar_noteheads[0]['x']
         leftmost_group = []
-        
+
         for notehead in bar_noteheads:
             if abs(notehead['x'] - leftmost_x) <= tolerance:
                 leftmost_group.append(notehead)
-        
+
         # Assign bar timing to leftmost noteheads only
         for notehead in leftmost_group:
             notehead['bar_moment'] = bar_moment
-            notehead['bar'] = bar_number  # Use actual bar number, not array index
-    
+            # Use actual bar number, not array index
+            notehead['bar'] = bar_number
+
     return notehead_data
 
 # =============================================================================
 # LILYPOND SOURCE CODE PARSING FUNCTION - V2 (UPDATED FOR NORMALIZED DATA-REF)
 # =============================================================================
 
+
 def extract_text_from_data_ref(data_ref):
     """
     Extract LilyPond pitch notation from normalized data-ref values.
-    
+
     This function processes data-ref values that have been normalized by upstream
     processing (remove_unwanted_hrefs.py). The data-ref format is already clean:
     "file.ly:line:column" (no textedit prefix, no workspace path).
-    
+
     V2 IMPROVEMENTS:
     - Properly handles duration in note regex (d''2, cis'4., etc.)
     - Detects and excludes notes followed by \rest (positioned rests)
     - Supports both "b\rest" and "b \rest" formats
     - Works with normalized data-ref input (no additional cleaning needed)
-    
+
     Args:
         data_ref (str): Normalized data-ref value (e.g., "file.ly:25:10")
-        
+
     Returns:
         str or None: LilyPond pitch notation (e.g., "cis'") or None if not found
                      or if the note is followed by \rest
-        
+
     Data-ref Format: file.ly:line:column
     - file.ly: Path to .ly source file
-    - line: 1-based line number  
+    - line: 1-based line number
     - column: 1-based character position
-    
+
     Examples of what gets excluded:
     - "b \rest" -> None (positioned rest)
     - "d''2 \rest" -> None (positioned rest with duration)
     - "cis'4.\rest" -> None (positioned rest with dotted duration)
-    
+
     Examples of what gets included:
     - "cis'4" -> "cis'4" (regular note)
     - "d''2" -> "d''2" (note with duration)
@@ -302,14 +310,15 @@ def extract_text_from_data_ref(data_ref):
         # Parse normalized data-ref format: "file.ly:line:column"
         if not data_ref:
             return "(empty data-ref)"
-            
+
         parts = data_ref.split(":")
         if len(parts) < 3:
             return "(invalid data-ref format)"
-            
+
         file_path = parts[0]
         line = int(parts[1]) - 1      # Convert to 0-based indexing
-        col_start = int(parts[2]) - 1    # Convert LilyPond 1-based column to Python 0-based index
+        # Convert LilyPond 1-based column to Python 0-based index
+        col_start = int(parts[2]) - 1
 
         # Read the specific LilyPond source file referenced in the data-ref
         with open(file_path, encoding="utf-8") as f:
@@ -318,37 +327,40 @@ def extract_text_from_data_ref(data_ref):
         # Extract text from the specified position to end of line
         text_line = lines[line][col_start:]
         text = text_line.strip().strip("[]<>()")
-        
+
         # Attempt to match LilyPond note pattern (basic note + accidentals + octaves)
         match = note_regex.match(text)
 
         if match:
             # Get the basic note part (without duration) - this is what we'll return
             note_part = match.group(0).replace(" ", "")
-            
+
             # Now manually look for duration after the note to find the end of the complete note
             remaining_after_note = text[match.end():]
-            
+
             # Look for optional duration (numbers like 1, 2, 4, 8, 16, etc.)
             duration_match = re.match(r'(\d+\.?)', remaining_after_note)
-            
+
             # Determine where to look for \rest (after note+duration if duration exists)
             if duration_match:
                 # Duration found - check for \rest after the duration
-                remaining_text = remaining_after_note[duration_match.end():].strip()
+                remaining_text = remaining_after_note[duration_match.end(
+                ):].strip()
                 duration_part = duration_match.group(1)
-                print(f"   🎵 Found note with duration: {note_part}{duration_part}")
+                print(
+                    f"   🎵 Found note with duration: {note_part}{duration_part}")
             else:
                 # No duration - check for \rest right after the note
                 remaining_text = remaining_after_note.strip()
                 print(f"   🎵 Found note without duration: {note_part}")
-            
+
             # Check if this note is followed by \rest
             if remaining_text.startswith('\\rest'):
                 # This is a positioned rest, not a real note - exclude it
-                print(f"   🚫 Excluding positioned rest: {note_part} (followed by \\rest)")
+                print(
+                    f"   🚫 Excluding positioned rest: {note_part} (followed by \\rest)")
                 return None
-            
+
             # It's a real note, return just the note part (no duration)
             print(f"   ✅ Valid note: {note_part}")
             return note_part
@@ -358,38 +370,39 @@ def extract_text_from_data_ref(data_ref):
 
     except Exception as e:
         return f"(error: {e})"
-        
+
+
 def group_notes_by_x_tolerance(notes, tolerance=0.0):
     """
     Group notes by x-coordinate within tolerance to handle simultaneous notes (chords).
-    
+
     LilyPond often places chord notes at slightly different x-coordinates for visual
     clarity, but they should be treated as simultaneous for MIDI alignment.
-    
+
     This function groups notes that are within the specified tolerance and sorts them
     appropriately for musical interpretation:
     - Notes within tolerance of each other are considered simultaneous (chords)
     - Within each chord group, notes are sorted top-to-bottom (descending y)
     - Chord groups are ordered left-to-right by their x-position
-    
+
     Args:
         notes (list): List of notehead dictionaries with x, y coordinates
         tolerance (float): Maximum x-coordinate difference to consider simultaneous
-        
+
     Returns:
         list: Notes sorted with chord members properly grouped
     """
     if not notes:
         return notes
-        
+
     print(f"🎯 Applying chord tolerance: ±{tolerance} units")
-    
+
     # Sort by x-coordinate first for grouping
     notes_sorted = sorted(notes, key=lambda n: n["x"])
-    
+
     groups = []
     current_group = [notes_sorted[0]]
-    
+
     # Group notes within tolerance
     for note in notes_sorted[1:]:
         if abs(note["x"] - current_group[0]["x"]) <= tolerance:
@@ -399,10 +412,10 @@ def group_notes_by_x_tolerance(notes, tolerance=0.0):
             # Outside tolerance - start new group (new time position)
             groups.append(current_group)
             current_group = [note]
-    
+
     # Don't forget the last group
     groups.append(current_group)
-    
+
     # Sort within each group by y-coordinate (top to bottom = descending y)
     # This ensures consistent ordering within chords
     result = []
@@ -410,21 +423,22 @@ def group_notes_by_x_tolerance(notes, tolerance=0.0):
         # Sort notes within group by y-coordinate (descending = top to bottom)
         group_sorted = sorted(group, key=lambda n: -n["y"])
         result.extend(group_sorted)
-    
+
     return result
+
 
 def find_data_ref_in_anchor(anchor_element, ns):
     """
     Find data-ref attribute in anchor element (normalized format).
-    
+
     This function looks for the normalized data-ref attributes that have been
     processed by upstream scripts (remove_unwanted_hrefs.py). The data-ref
     attributes are in clean format without textedit prefixes or namespaces.
-    
+
     Args:
         anchor_element: XML element representing the <a> tag
         ns: Namespace dictionary for XML queries (for compatibility)
-        
+
     Returns:
         str or None: The data-ref value if found, None otherwise
     """
@@ -432,13 +446,14 @@ def find_data_ref_in_anchor(anchor_element, ns):
     data_ref = anchor_element.get('data-ref')
     if data_ref:
         return data_ref
-    
+
     return None
+
 
 def setup_argument_parser():
     """
     Setup command line argument parser with configuration-aware tolerance.
-    
+
     The tolerance argument is now optional - if not provided via CLI, the script
     will automatically look for project-specific configuration files to determine
     the appropriate tolerance value for chord grouping.
@@ -450,51 +465,52 @@ def setup_argument_parser():
 Examples:
   # Basic extraction:
   python extract_note_heads.py -i score_filtered.svg -o noteheads.csv -of fermatas.csv
-  
+
   # With custom tolerance:
   python extract_note_heads.py -i score_filtered.svg -o noteheads.csv -of fermatas.csv --tolerance 3.0
 
 Configuration Files:
   Create PROJECT_NAME.yaml in the working directory to set project-specific tolerance:
-  
+
   # Example bwv659.yaml:
   tolerance: 1.5
-  
+
   # Example bwv543.yaml:
   tolerance: 3.0
 
 Pipeline Integration:
   This script expects normalized SVG input from remove_unwanted_hrefs.py with:
   - Clean data-ref attributes (no textedit prefixes)
-  - No namespace issues  
+  - No namespace issues
   - Unwanted links already removed
         """
     )
-    
-    parser.add_argument('-i', '--input', 
-                       required=True,
-                       help='Input SVG file path (required, should be filtered/normalized)')
-    
+
+    parser.add_argument('-i', '--input',
+                        required=True,
+                        help='Input SVG file path (required, should be filtered/normalized)')
+
     parser.add_argument('-o', '--output',
-                       required=True, 
-                       help='Output CSV file path for noteheads (required)')
-    
+                        required=True,
+                        help='Output CSV file path for noteheads (required)')
+
     parser.add_argument('-of', '--output-fermata',
-                       required=True,
-                       help='Output CSV file path for fermatas (required)')
-    
+                        required=True,
+                        help='Output CSV file path for fermatas (required)')
+
     parser.add_argument('-t', '--tolerance',
-                       type=float,
-                       default=None,  # Changed: Now optional, None means "auto-detect"
-                       help='X-coordinate tolerance for grouping simultaneous notes '
-                            '(default: auto-detect from project config or 1.0)')
-    
+                        type=float,
+                        default=None,  # Changed: Now optional, None means "auto-detect"
+                        help='X-coordinate tolerance for grouping simultaneous notes '
+                        '(default: auto-detect from project config or 1.0)')
+
     return parser.parse_args()
+
 
 def main():
     """
     Main function with configuration-aware tolerance loading.
-    
+
     This function implements the complete notehead extraction pipeline with
     intelligent tolerance configuration:
     1. Parse command line arguments
@@ -503,17 +519,17 @@ def main():
     4. Apply tolerance-based chord grouping
     5. Export results to CSV
     """
-    
+
     print("🎼 SVG Notehead Extractor")
     print("=" * 50)
-    
+
     # Parse arguments
     args = setup_argument_parser()
-    
+
     svg_file = args.input
     output_csv = args.output
     fermata_csv = args.output_fermata
-    
+
     # CONFIGURATION-AWARE TOLERANCE LOADING
     # Priority: CLI argument > project config > default
     if args.tolerance is not None:
@@ -523,7 +539,7 @@ def main():
     else:
         # No CLI tolerance - check project configuration
         tolerance = load_project_tolerance()
-    
+
     print(f"📄 Input SVG: {svg_file}")
     print(f"📊 Output CSV: {output_csv}")
     print(f"🎯 Fermata CSV: {fermata_csv}")
@@ -547,9 +563,10 @@ def main():
 
         # SVG namespaces for XPath queries
         # Both legacy and modern namespace formats supported
-        NS = {'svg': 'http://www.w3.org/2000/svg', 'xlink': 'http://www.w3.org/1999/xlink'}
+        NS = {'svg': 'http://www.w3.org/2000/svg',
+              'xlink': 'http://www.w3.org/1999/xlink'}
         root = svg.getroot()
-        
+
         # Create parent map for ElementTree (since it doesn't have getparent())
         parent_map = {c: p for p in root.iter() for c in p}
 
@@ -567,10 +584,11 @@ def main():
         for a in root.findall(".//svg:a", NS):
             # Get the normalized data-ref value
             data_ref = find_data_ref_in_anchor(a, NS)
-            
+
             if not data_ref:
-                continue  # Skip elements without data-ref (not musical content)
-            
+                # Skip elements without data-ref (not musical content)
+                continue
+
             # Extract pitch information from the data-ref by parsing LilyPond source
             snippet = extract_text_from_data_ref(data_ref)
 
@@ -578,30 +596,33 @@ def main():
             if snippet is not None:
                 # Find the graphical group element containing visual positioning
                 g = a.find("svg:g", NS)
-                
+
                 if g is not None:
                     # Extract coordinate transformation from the group's transform attribute
                     transform = g.attrib.get("transform", "")
-                    
+
                     # Parse translation coordinates: "translate(x, y)" or "translate(x,y)"
-                    match = re.search(r"translate\(([-\d.]+)[ ,]+([-\d.]+)", transform)
-                    
+                    match = re.search(
+                        r"translate\(([-\d.]+)[ ,]+([-\d.]+)", transform)
+
                     if not match:
-                        print(f"⚠️  No transform found for notehead: {data_ref} [{snippet}]")
-                    
+                        print(
+                            f"⚠️  No transform found for notehead: {data_ref} [{snippet}]")
+
                     if match:
                         # Extract and convert coordinates
                         x = float(match.group(1))
                         y = float(match.group(2))
-                        
+
                         # Check for fermata attribute on the parent group or the anchor itself
                         fermata_value = None
-                        
+
                         # First check if the anchor element itself has data-fermata
                         data_fermata = a.get("data-fermata")
                         if data_fermata == "true":
                             fermata_value = "true"
-                            print(f"   🎵 Found fermata on anchor: {snippet} at ({x}, {y})")
+                            print(
+                                f"   🎵 Found fermata on anchor: {snippet} at ({x}, {y})")
                         else:
                             # Check the parent element of the anchor for data-fermata using parent map
                             parent = parent_map.get(a)
@@ -609,8 +630,9 @@ def main():
                                 data_fermata = parent.get("data-fermata")
                                 if data_fermata == "true":
                                     fermata_value = "true"
-                                    print(f"   🎵 Found fermata on parent group: {snippet} at ({x}, {y})")                        
-                        
+                                    print(
+                                        f"   🎵 Found fermata on parent group: {snippet} at ({x}, {y})")
+
                         # Store the notehead information including fermata data
                         notehead_data.append({
                             "x": x,
@@ -620,32 +642,38 @@ def main():
                             "fermata": fermata_value  # None for non-fermata notes, "true" for fermata notes
                         })
 
-        print(f"   📊 Processed {len(root.findall('.//svg:a', NS))} anchor elements")
-        print(f"   ✅ Found {len(notehead_data)} valid noteheads with pitch data") 
+        print(
+            f"   📊 Processed {len(root.findall('.//svg:a', NS))} anchor elements")
+        print(
+            f"   ✅ Found {len(notehead_data)} valid noteheads with pitch data")
 
         # =================================================================
         # BAR DATA EXTRACTION AND BEAT TIME ASSIGNMENT
         # =================================================================
 
         print("🎵 Extracting bar data and assigning bar timing...")
-        
+
         # Extract bar positions and timing data from SVG
         bars = extract_bar_data_from_svg(root, NS)
         print(f"   📊 Found {len(bars)} bars with timing data")
-        
+
         if bars:
             # Display bar information for verification
             for bar in bars[:3]:  # Show first 3 bars
-                print(f"   📍 Bar {bar['bar_number']}: x={bar['x_position']:.1f}, moment={bar['moment_main']}")
+                print(
+                    f"   📍 Bar {bar['bar_number']}: x={bar['x_position']:.1f}, moment={bar['moment_main']}")
             if len(bars) > 3:
                 print(f"   ... and {len(bars) - 3} more bars")
-        
+
         # Assign bar timing to leftmost noteheads in each bar
-        notehead_data = assign_bar_timing_to_noteheads(notehead_data, bars, tolerance)
-        
+        notehead_data = assign_bar_timing_to_noteheads(
+            notehead_data, bars, tolerance)
+
         # Count how many noteheads got bar assignments
-        bar_assigned = sum(1 for n in notehead_data if n.get('bar_moment') is not None)
-        print(f"   🎯 Assigned bar timing to {bar_assigned} noteheads (leftmost in each bar)")
+        bar_assigned = sum(1 for n in notehead_data if n.get(
+            'bar_moment') is not None)
+        print(
+            f"   🎯 Assigned bar timing to {bar_assigned} noteheads (leftmost in each bar)")
 
         # =================================================================
         # SPATIAL SORTING WITH TOLERANCE FOR SIMULTANEOUS NOTES
@@ -654,30 +682,35 @@ def main():
         print("📐 Sorting noteheads by visual position with chord tolerance...")
 
         # Apply tolerance-based sorting to group chords properly
-        notehead_data = group_notes_by_x_tolerance(notehead_data, tolerance=tolerance)
+        notehead_data = group_notes_by_x_tolerance(
+            notehead_data, tolerance=tolerance)
 
-        print(f"   🎯 Sorted {len(notehead_data)} noteheads with chord tolerance (±{tolerance} units)")
-        
+        print(
+            f"   🎯 Sorted {len(notehead_data)} noteheads with chord tolerance (±{tolerance} units)")
+
         # Show grouping statistics for verification
         if notehead_data:
             x_positions = [n["x"] for n in notehead_data]
             unique_x_groups = 1
-            
+
             # Count distinct time positions (chord groups)
             for i in range(1, len(x_positions)):
                 if abs(x_positions[i] - x_positions[i-1]) > tolerance:
                     unique_x_groups += 1
-            
+
             print(f"   📊 Identified {unique_x_groups} distinct time positions")
             if unique_x_groups > 0:
                 avg_notes_per_position = len(notehead_data) / unique_x_groups
-                print(f"   🎵 Average notes per position: {avg_notes_per_position:.1f}")
-                
+                print(
+                    f"   🎵 Average notes per position: {avg_notes_per_position:.1f}")
+
                 # Provide guidance on tolerance tuning
                 if avg_notes_per_position > 4:
-                    print(f"   💡 Tip: High notes per position - try increasing tolerance")
+                    print(
+                        f"   💡 Tip: High notes per position - try increasing tolerance")
                 elif avg_notes_per_position < 1.2:
-                    print(f"   💡 Tip: Low notes per position - try decreasing tolerance")
+                    print(
+                        f"   💡 Tip: Low notes per position - try decreasing tolerance")
 
         # =================================================================
         # CSV EXPORT
@@ -687,35 +720,40 @@ def main():
 
         # Convert notehead data to DataFrame for consistent CSV handling
         notehead_df = pd.DataFrame(notehead_data)
-        
+
         # Ensure all required columns exist, even if no data
-        required_columns = ["snippet", "data_ref", "x", "y", "bar", "bar_moment"]
+        required_columns = ["snippet", "data_ref",
+                            "x", "y", "bar", "bar_moment"]
         for col in required_columns:
             if col not in notehead_df.columns:
                 notehead_df[col] = None
-        
+
         # Reorder columns to include bar timing data: snippet, data_ref, x, y, bar, bar_moment
         notehead_df = notehead_df[required_columns]
-        
+
         # Round coordinates to 3 decimal precision for consistency (only if data exists)
         if len(notehead_df) > 0:
             notehead_df["x"] = notehead_df["x"].round(3)
             notehead_df["y"] = notehead_df["y"].round(3)
-        
+
         # Use utility function to handle LilyPond notation CSV quoting
         save_dataframe_with_lilypond_csv(notehead_df, output_csv)
-        
+
         # Write fermatas only (separate file)
-        fermata_data = [note for note in notehead_data if note.get('fermata') == 'true']
+        fermata_data = [
+            note for note in notehead_data if note.get('fermata') == 'true']
         if fermata_data:
-            fermata_df = pd.DataFrame(fermata_data)[["snippet", "data_ref", "x", "y"]]  
+            fermata_df = pd.DataFrame(fermata_data)[
+                ["snippet", "data_ref", "x", "y"]]
             save_dataframe_with_lilypond_csv(fermata_df, fermata_csv)
-            print(f"🎯 Fermata file created: {fermata_csv} ({len(fermata_data)} fermatas)")
+            print(
+                f"🎯 Fermata file created: {fermata_csv} ({len(fermata_data)} fermatas)")
         else:
             # Create empty fermata file
             empty_df = pd.DataFrame(columns=["snippet", "data_ref", "x", "y"])
             save_dataframe_with_lilypond_csv(empty_df, fermata_csv)
-            print(f"🎯 Empty fermata file created: {fermata_csv} (no fermatas found)")
+            print(
+                f"🎯 Empty fermata file created: {fermata_csv} (no fermatas found)")
 
         # =================================================================
         # COMPLETION SUMMARY
@@ -726,30 +764,35 @@ def main():
 
         # Additional statistics for verification and debugging
         if notehead_data:
-            x_range = max(n["x"] for n in notehead_data) - min(n["x"] for n in notehead_data)
-            y_range = max(n["y"] for n in notehead_data) - min(n["y"] for n in notehead_data)
+            x_range = max(n["x"] for n in notehead_data) - \
+                min(n["x"] for n in notehead_data)
+            y_range = max(n["y"] for n in notehead_data) - \
+                min(n["y"] for n in notehead_data)
             unique_pitches = len(set(n["snippet"] for n in notehead_data))
-            fermata_count = sum(1 for n in notehead_data if n.get("fermata") == "true")
-            
+            fermata_count = sum(
+                1 for n in notehead_data if n.get("fermata") == "true")
+
             print(f"\n📊 Extraction Statistics:")
             print(f"   📏 X-coordinate range: {x_range:.1f} units")
-            print(f"   📐 Y-coordinate range: {y_range:.1f} units") 
+            print(f"   📐 Y-coordinate range: {y_range:.1f} units")
             print(f"   🎵 Unique pitch notations: {unique_pitches}")
             print(f"   🎯 Notes with fermatas: {fermata_count}")
             if unique_pitches > 0:
                 avg_notes_per_pitch = len(notehead_data) / unique_pitches
-                print(f"   🔗 Average notes per pitch: {avg_notes_per_pitch:.1f}")
+                print(
+                    f"   🔗 Average notes per pitch: {avg_notes_per_pitch:.1f}")
 
         print()
         print("🎉 Notehead extraction completed successfully!")
         print(f"🎯 Ready for alignment with MIDI data in next pipeline stage")
         print(f"🔧 Using normalized data-ref attributes from upstream processing")
-        
+
         # Configuration guidance for user
         if args.tolerance is None:
             project_name = get_project_name()
             print(f"\n💡 Configuration tip:")
-            print(f"   To lock in this tolerance ({tolerance}) for project {project_name}:")
+            print(
+                f"   To lock in this tolerance ({tolerance}) for project {project_name}:")
             print(f"   Create {project_name}.yaml with content:")
             print(f"   tolerance: {tolerance}")
 
@@ -761,6 +804,7 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

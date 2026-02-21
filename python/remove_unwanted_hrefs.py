@@ -5,14 +5,14 @@ remove_unwanted_hrefs.py
 Musical Score Link Cleanup and Normalization Utility
 ====================================================
 
-This script performs comprehensive href cleaning and normalization for LilyPond-generated 
+This script performs comprehensive href cleaning and normalization for LilyPond-generated
 SVG files. It serves as the single normalization point for the entire pipeline, ensuring
 all downstream scripts receive clean, consistent data-ref attributes.
 
 Centralized Processing:
 1. NAMESPACE CLEANUP: Convert legacy xlink:href to modern href attributes
 2. HREF CLEANING: Normalize LilyPond references using clean_lilypond_href()
-3. ATTRIBUTE RENAME: Convert href → data-ref for downstream consistency  
+3. ATTRIBUTE RENAME: Convert href → data-ref for downstream consistency
 4. SELECTIVE REMOVAL: Remove unwanted links (tablature, grace notes, annotations)
 
 This approach follows "clean once, use everywhere" - all downstream scripts can simply
@@ -26,7 +26,7 @@ as other links can interfere with user interaction and animation logic.
 
 Selective Link Removal:
 - REMOVES links from: <text> elements WITHOUT <path> or tie attributes (pure annotations)
-- REMOVES links from: <rect> elements WITHOUT <path> or tie attributes (pure backgrounds)  
+- REMOVES links from: <rect> elements WITHOUT <path> or tie attributes (pure backgrounds)
 - REMOVES links to: grace-init.ly and other unwanted LilyPond system files (UNLESS they have tie attributes)
 - PRESERVES links on: ANY anchor containing <path> elements (noteheads)
 - PRESERVES links on: ANY anchor with tie-related data attributes (tie starts/ends)
@@ -46,7 +46,7 @@ data format throughout the entire processing pipeline.
 from xml.etree import ElementTree as ET
 from pathlib import Path
 import re
-import argparse
+# import argparse
 import sys
 from _scripts_utils import clean_lilypond_href
 
@@ -117,7 +117,7 @@ def remove_unwanted_hrefs(input_path: Path, output_path: Path):
     performing all href-related processing in one place:
 
     1. NAMESPACE CLEANUP: Convert legacy xlink:href to modern href
-    2. HREF CLEANING: Normalize using clean_lilypond_href()  
+    2. HREF CLEANING: Normalize using clean_lilypond_href()
     3. ATTRIBUTE RENAME: Convert href → data-ref
     4. SELECTIVE REMOVAL: Remove unwanted system file links
 
@@ -380,10 +380,10 @@ Examples:
 Pipeline Integration:
   This script serves as the single normalization point for the entire pipeline.
   All downstream scripts can read clean data-ref attributes without additional processing.
-  
+
   Processing Steps:
   1. Namespace cleanup: xlink:href → href
-  2. Content cleaning: "textedit:///work/file.ly:37:20:21" → "file.ly:37:21" 
+  2. Content cleaning: "textedit:///work/file.ly:37:20:21" → "file.ly:37:21"
   3. Attribute rename: href → data-ref
   4. Selective removal: Remove unwanted system/annotation links
         """
