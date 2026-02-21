@@ -582,7 +582,6 @@ def main():
                 if g is not None:
                     # Extract coordinate transformation from the group's transform attribute
                     transform = g.attrib.get("transform", "")
-                    print(f'TRANSFORM = {transform}')
                     
                     # Parse translation coordinates: "translate(x, y)" or "translate(x,y)"
                     match = re.search(r"translate\(([-\d.]+)[ ,]+([-\d.]+)", transform)
