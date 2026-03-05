@@ -9,6 +9,9 @@ import textwrap
 from pathlib import Path
 from antlr4 import InputStream, CommonTokenStream, ParseTreeWalker
 
+# Import constants
+from tasks_mermaid_constants import *
+
 # Import generated ANTLR classes
 try:
     from antlr.MermaidPipelineLexer import MermaidPipelineLexer
@@ -123,8 +126,8 @@ def get_task_sources(task_id, edges, nodes):
                 input_node = get_node_by_id(nodes, from_node)
                 if input_node:
                     filename = input_node['content']
-                    if 'BWV000' in filename:
-                        filename = filename.replace('BWV000', '{PROJECT_NAME}')
+                    if 'SONG_TITLE' in filename:
+                        filename = filename.replace('SONG_TITLE', '{PROJECT_NAME}')
                         path_sources.append(f'Path(f"{filename}")')
                     else:
                         path_sources.append(f'Path("{filename}")')
@@ -134,8 +137,8 @@ def get_task_sources(task_id, edges, nodes):
                 output_node = get_node_by_id(nodes, from_node)
                 if output_node:
                     filename = output_node['content']
-                    if 'BWV000' in filename:
-                        filename = filename.replace('BWV000', '{PROJECT_NAME}')
+                    if 'SONG_TITLE' in filename:
+                        filename = filename.replace('SONG_TITLE', '{PROJECT_NAME}')
                         path_sources.append(f'Path(f"{filename}")')
                     else:
                         path_sources.append(f'Path("{filename}")')
@@ -178,9 +181,9 @@ def get_task_targets(task_id, edges, nodes):
             if from_node == runnable_id and (to_node.startswith('O') or to_node.startswith('E')):
                 target_node = get_node_by_id(nodes, to_node)
                 if target_node:
-                    # Extract filename from content and fix BWV000 placeholder
+                    # Extract filename from content and fix SONG_TITLE placeholder
                     filename = target_node['content']
-                    filename = filename.replace('BWV000', '{PROJECT_NAME}')
+                    filename = filename.replace('SONG_TITLE', '{PROJECT_NAME}')
                     targets.append(f'f"{filename}"')
 
     # If no targets found through runnables, check if task has direct input connections
@@ -204,46 +207,43 @@ def get_task_command(task_id, edges, nodes):
     """
     Get the command for a task by finding its corresponding runnable.
     """
-    # Find the runnable that this task maps to (T -> R)
+    # Find runnable that this task maps to (T -> R)
     for from_node, to_node in edges:
         if from_node == task_id and to_node.startswith('R'):
             runnable_node = get_node_by_id(nodes, to_node)
             if runnable_node:
                 command = runnable_node['content']
                 print(f"   Raw command: '{command}'")
-
+                
+                include_dirs = []
                 # Check if it's a Docker command or Python script
                 if 'docker' in command.lower() and 'run' in command.lower():
-                    # Using local Lilypond (MSYS2)
-                    solmisasi_lily_abs = 'e:/github.com/henriyulianto/solmisasi-lily/lib'
-                    partitur_abs = 'e:/github.com/henriyulianto/partitur/lilypond'
-                    include_dirs = (f'-I {solmisasi_lily_abs}',
-                                    f'-I {partitur_abs}')
-                    command = command.replace(
-                        'docker run --rm -v PWD:/work codello/lilypond:dev INCLUDES',
-                        f'lilypond {" ".join(include_dirs)}')
+                    if USE_DOCKER_FOR_LILYPOND:
+                        # Add lilypond includes volume mount to /work/includes
+                        mounts = (f'-v {SOLMISASI_LIB_ABS_PATH}:/work/{SOLMISASI_LIB_ABS_PATH.name}',
+                                f'-v {PARTITUR_DATA_ABS_PATH}:/work/{PARTITUR_DATA_ABS_PATH.name}')
+                        command = command.replace('docker run', f'docker run {" ".join(mounts)}')
 
+                        command = command.replace('PWD', f'{Path.cwd()}')
+
+                        # Replace INCLUDES marker with actual include flag
+                        include_dirs.append(f'-I /work/{SOLMISASI_LIB_ABS_PATH.name}')
+                        include_dirs.append(f'-I /work/{PARTITUR_DATA_ABS_PATH.name}')
+                    else:
+                        # Using local Lilypond
+                        include_dirs.append(f'-I {SOLMISASI_LIB_ABS_PATH}')
+                        include_dirs.append(f'-I {PARTITUR_DATA_ABS_PATH}')
+                        command = command.replace(
+                            'docker run --rm -v PWD:/work codello/lilypond:dev',
+                            f'{LILYPOND_BIN}')
+
+                    # Replace INCLUDES
+                    command = command.replace('INCLUDES', " ".join(include_dirs))
+                    
                     # Handle Docker command (fix spacing issues if needed)
                     # Replace project name placeholder and fix path
-                    command = command.replace('BWV000', '{PROJECT_NAME}')
-                    command = command.replace('PWD', f'{{Path.cwd()}}')
-
-                    # Add lilypond includes volume mount to /work/includes
-                    # lilypond_includes_path = Path(__file__).parent / ".." / "lilypond" / "includes"
-                    # lilypond_includes_abs = lilypond_includes_path.resolve()
-
-                    # mounts = (f'-v {solmisasi_lily_abs}:/work/solmisasi-lily',
-                    #           f'-v {partitur_abs}:/work/partitur')
-                    # command = command.replace('docker run', f'docker run {" ".join(mounts)}')
-
-                    # Replace INCLUDES marker with the actual include flag
-                    # command = command.replace('INCLUDES', '-I /work/includes')
-                    # MOD: Append solmisasi-lily/lib and partitur to Lilypond include path
-                    # command = command.replace(
-                    #     'INCLUDES',
-                    #     " ".join(('-I /work/solmisasi-lily/lib',
-                    #               '-I /work/partitur')))
-
+                    command = command.replace('SONG_TITLE', '{PROJECT_NAME}')
+                    
                     return f'f"{command}"'
 
                 elif command.startswith('bwv_script:'):
@@ -256,7 +256,7 @@ def get_task_command(task_id, edges, nodes):
 
                     # Replace project name in arguments
                     args = [arg.replace(
-                        'BWV000', '{PROJECT_NAME}') for arg in args]
+                        'SONG_TITLE', '{PROJECT_NAME}') for arg in args]
 
                     if args:
                         args_str = ', '.join(f'f"{arg}"' for arg in args)
@@ -305,21 +305,21 @@ def generate_status_task(listener):
     # Get export nodes
     export_nodes = get_nodes_by_type(listener.nodes, 'E')
     for node in export_nodes:
-        filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+        filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
         description = node.get('description', node['content'])
         status_files.append(('Export', description, filename))
 
     # Get output nodes
     output_nodes = get_nodes_by_type(listener.nodes, 'O')
     for node in output_nodes:
-        filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+        filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
         description = node.get('description', node['content'])
         status_files.append(('Output', description, filename))
 
     # Get input nodes that are generated (like ties.csv)
     input_nodes = get_nodes_by_type(listener.nodes, 'I')
     for node in input_nodes:
-        filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+        filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
         # Only include generated input files (not source files)
         if filename.endswith('.csv') or 'generated' in filename.lower():
             description = node.get('description', node['content'])
@@ -367,13 +367,13 @@ def generate_clean_task(listener):
     # Get output nodes (intermediate files)
     output_nodes = get_nodes_by_type(listener.nodes, 'O')
     for node in output_nodes:
-        filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+        filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
         target_files.append(filename)
 
     # Get generated input files (like ties.csv)
     input_nodes = get_nodes_by_type(listener.nodes, 'I')
     for node in input_nodes:
-        filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+        filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
         # Only include generated input files
         if filename.endswith('.csv') or 'generated' in filename.lower():
             target_files.append(filename)
@@ -425,19 +425,19 @@ def generate_clean_all_task(listener):
     # Get export nodes
     export_nodes = get_nodes_by_type(listener.nodes, 'E')
     for node in export_nodes:
-        filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+        filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
         target_files.append(filename)
 
     # Get output nodes
     output_nodes = get_nodes_by_type(listener.nodes, 'O')
     for node in output_nodes:
-        filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+        filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
         target_files.append(filename)
 
     # Get generated input files (like ties.csv)
     input_nodes = get_nodes_by_type(listener.nodes, 'I')
     for node in input_nodes:
-        filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+        filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
         # Only include generated input files
         if filename.endswith('.csv') or 'generated' in filename.lower():
             target_files.append(filename)

@@ -6,20 +6,20 @@ Audio-Synced YAML Generation for Dynamic Tempo Synchronization
 =============================================================
 
 This script creates audio-synchronized timing data by combining:
-1. Bar-aligned noteheads from BWV000_note_heads.csv (with bar/bar_moment)
-2. Existing MIDI-based sync data from BWV000.yaml
+1. Bar-aligned noteheads from SONG_TITLE_note_heads.csv (with bar/bar_moment)
+2. Existing MIDI-based sync data from SONG_TITLE.yaml
 3. Detected audio beats from detected_beats.yaml
 
-The result is an alternate BWV000_audio.yaml file with dynamic tempo timing
+The result is an alternate SONG_TITLE_audio.yaml file with dynamic tempo timing
 that can sync score animation with real performance audio containing tempo changes.
 
 Input Files:
-- BWV000_note_heads.csv: Noteheads with bar timing attributes
-- BWV000.yaml: Existing MIDI-based sync data
+- SONG_TITLE_note_heads.csv: Noteheads with bar timing attributes
+- SONG_TITLE.yaml: Existing MIDI-based sync data
 - detected_beats.yaml: Audio beat detection results
 
 Output:
-- BWV000_audio.yaml: Audio-synchronized timing data for dynamic tempo playback
+- SONG_TITLE_audio.yaml: Audio-synchronized timing data for dynamic tempo playback
 """
 
 import argparse

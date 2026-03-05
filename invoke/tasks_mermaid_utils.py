@@ -333,7 +333,7 @@ def get_all_file_nodes(mermaid_file):
         }
         
         for node in listener.nodes:
-            filename = node['content'].replace('BWV000', '{PROJECT_NAME}')
+            filename = node['content'].replace('SONG_TITLE', '{PROJECT_NAME}')
             file_data = {
                 'id': node['id'],
                 'filename': filename,
