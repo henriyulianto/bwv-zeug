@@ -16,10 +16,14 @@ matplotlib>=3.7.0
 
 # Build System & Task Management
 invoke>=2.2.0
-antlr4-python3-runtime>=4.9.0
+antlr4-python3-runtime>=4.13.0
 
 # File Format Support
 PyYAML>=6.0.0
 
 # XML Processing (optional, more robust than xml.etree)
 lxml>=4.9.0
+
+# Beat Detection & Signal Processing
+madmom>=0.16.0
+scipy>=1.9.0

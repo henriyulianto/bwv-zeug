@@ -127,7 +127,8 @@ def get_task_sources(task_id, edges, nodes):
                 if input_node:
                     filename = input_node['content']
                     if 'SONG_TITLE' in filename:
-                        filename = filename.replace('SONG_TITLE', '{PROJECT_NAME}')
+                        filename = filename.replace(
+                            'SONG_TITLE', '{PROJECT_NAME}')
                         path_sources.append(f'Path(f"{filename}")')
                     else:
                         path_sources.append(f'Path("{filename}")')
@@ -138,7 +139,8 @@ def get_task_sources(task_id, edges, nodes):
                 if output_node:
                     filename = output_node['content']
                     if 'SONG_TITLE' in filename:
-                        filename = filename.replace('SONG_TITLE', '{PROJECT_NAME}')
+                        filename = filename.replace(
+                            'SONG_TITLE', '{PROJECT_NAME}')
                         path_sources.append(f'Path(f"{filename}")')
                     else:
                         path_sources.append(f'Path("{filename}")')
@@ -214,21 +216,24 @@ def get_task_command(task_id, edges, nodes):
             if runnable_node:
                 command = runnable_node['content']
                 print(f"   Raw command: '{command}'")
-                
+
                 include_dirs = []
                 # Check if it's a Docker command or Python script
                 if 'docker' in command.lower() and 'run' in command.lower():
                     if USE_DOCKER_FOR_LILYPOND:
                         # Add lilypond includes volume mount to /work/includes
                         mounts = (f'-v {SOLMISASI_LIB_ABS_PATH}:/work/{SOLMISASI_LIB_ABS_PATH.name}',
-                                f'-v {PARTITUR_DATA_ABS_PATH}:/work/{PARTITUR_DATA_ABS_PATH.name}')
-                        command = command.replace('docker run', f'docker run {" ".join(mounts)}')
+                                  f'-v {PARTITUR_DATA_ABS_PATH}:/work/{PARTITUR_DATA_ABS_PATH.name}')
+                        command = command.replace(
+                            'docker run', f'docker run {" ".join(mounts)}')
 
                         command = command.replace('PWD', f'{Path.cwd()}')
 
                         # Replace INCLUDES marker with actual include flag
-                        include_dirs.append(f'-I /work/{SOLMISASI_LIB_ABS_PATH.name}')
-                        include_dirs.append(f'-I /work/{PARTITUR_DATA_ABS_PATH.name}')
+                        include_dirs.append(
+                            f'-I /work/{SOLMISASI_LIB_ABS_PATH.name}')
+                        include_dirs.append(
+                            f'-I /work/{PARTITUR_DATA_ABS_PATH.name}')
                     else:
                         # Using local Lilypond
                         include_dirs.append(f'-I {SOLMISASI_LIB_ABS_PATH}')
@@ -238,12 +243,13 @@ def get_task_command(task_id, edges, nodes):
                             f'{LILYPOND_BIN}')
 
                     # Replace INCLUDES
-                    command = command.replace('INCLUDES', " ".join(include_dirs))
-                    
+                    command = command.replace(
+                        'INCLUDES', " ".join(include_dirs))
+
                     # Handle Docker command (fix spacing issues if needed)
                     # Replace project name placeholder and fix path
                     command = command.replace('SONG_TITLE', '{PROJECT_NAME}')
-                    
+
                     return f'f"{command}"'
 
                 elif command.startswith('bwv_script:'):
@@ -596,8 +602,8 @@ def generate_tasks_file(listener):
                     task['id'], edges, task_nodes)
                 # Check if all dependencies are already in sorted_tasks
                 deps_satisfied = all(
-                    any(sorted_task['content'] ==
-                        dep for sorted_task in sorted_tasks)
+                    any(sorted_task['content'] == dep
+                        for sorted_task in sorted_tasks)
                     for dep in dependencies
                 )
                 if deps_satisfied:
@@ -618,7 +624,7 @@ def generate_tasks_file(listener):
 
     # Sort tasks by dependencies
     task_nodes = sort_tasks_by_dependencies(task_nodes, listener.edges)
-    print(f"🔧 Sorted tasks by dependencies")
+    print("🔧 Sorted tasks by dependencies")
 
     # Generate all pipeline tasks
     pipeline_tasks = []
@@ -810,7 +816,7 @@ def generate_full_tasks(mermaid_file):
 
     try:
         # Read and parse with ANTLR
-        content = mermaid_path.read_text()
+        content = mermaid_path.read_text(encoding='utf-8')
         input_stream = InputStream(content)
         lexer = MermaidPipelineLexer(input_stream)
         lexer.removeErrorListeners()
@@ -882,7 +888,7 @@ Examples:
             f"⚠️  Warning: Output file doesn't have .py extension: {output_path}")
 
     # Generate tasks
-    print(f"🚀 Generating tasks file...")
+    print("🚀 Generating tasks file...")
     print(f"   Input:  {input_path}")
     print(f"   Output: {output_path}")
 
@@ -891,7 +897,7 @@ Examples:
     if tasks_content:
         # Write to output file
         try:
-            output_path.write_text(tasks_content)
+            output_path.write_text(tasks_content, encoding='utf-8')
             print(f"✅ Successfully generated: {output_path}")
             print(f"📊 File size: {len(tasks_content):,} characters")
 
@@ -903,7 +909,7 @@ Examples:
             print(f"❌ Error writing output file: {e}")
             sys.exit(1)
     else:
-        print(f"❌ Failed to generate tasks")
+        print("❌ Failed to generate tasks")
         sys.exit(1)
 
 

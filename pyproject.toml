@@ -7,5 +7,8 @@ dependencies = [
     "antlr4-python3-runtime==4.9.2",
 ]
 
+[tool.uv.extra-build-dependencies]
+madmom = ["Cython", "setuptools", "wheel", "numpy"]
+
 [dependency-groups]
 dev = []
