@@ -53,7 +53,9 @@ def optimize_svg(input_file, output_file):
 
     try:
         result = subprocess.run([
-            'npx', 'svgo', str(input_path), '--output', str(output_path)
+            'npx', 'svgo', str(input_path), 
+            '--config', '/home/henri/projects/bwv-zeug/svgo.config.js',
+            '--output', str(output_path)
         ], capture_output=True, text=True, timeout=60)
     except subprocess.TimeoutExpired:
         print(f"❌ SVGO optimization timed out after 60 seconds")

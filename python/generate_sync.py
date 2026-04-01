@@ -612,9 +612,11 @@ def clean_svg(svg_root):
     existing_styles = svg_root.findall('.//{http://www.w3.org/2000/svg}style')
     if existing_styles:
         # Insert after the last existing style
-        insert_pos = list(svg_root).index(existing_styles[-1]) + 1
+        try:
+            insert_pos = list(svg_root).index(existing_styles[-1]) + 1
+        except (ValueError, IndexError):
+            insert_pos = 0
     else:
-        # Insert as first child
         insert_pos = 0
 
     svg_root.insert(insert_pos, style_elem)
@@ -657,9 +659,10 @@ def clean_svg(svg_root):
     for a_elem in svg_root.iter():
         # Handle both namespaced and non-namespaced
         if a_elem.tag == 'a' or a_elem.tag.endswith('}a'):
-            data_ref = a_elem.get('data-ref')
-            if data_ref:  # Updated: look for data-ref instead of href
-                elements_to_process.append(a_elem)
+            if a_elem.get("class") != "notangka":
+                data_ref = a_elem.get('data-ref')
+                if data_ref:  # Updated: look for data-ref instead of href
+                    elements_to_process.append(a_elem)
 
     print(f"Found {len(elements_to_process)} <a> elements to process")
 

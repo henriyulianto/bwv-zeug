@@ -585,8 +585,9 @@ def main():
             # Get the normalized data-ref value
             data_ref = find_data_ref_in_anchor(a, NS)
 
-            if not data_ref:
-                # Skip elements without data-ref (not musical content)
+            if not data_ref or a.get("class") == "notangka-dot":
+                # Skip elements without data-ref (not musical content) 
+                # or not angka dot elements
                 continue
 
             # Extract pitch information from the data-ref by parsing LilyPond source
@@ -600,6 +601,12 @@ def main():
                 if g is not None:
                     # Extract coordinate transformation from the group's transform attribute
                     transform = g.attrib.get("transform", "")
+
+                    # SOLMISASI: check if transform is scale
+                    if "scale" in transform:
+                        print(
+                            f"⚠️  Scale transform found for notehead: {data_ref} [{snippet}]")
+                        transform = g.find("svg:g", NS).attrib.get("transform", "")
 
                     # Parse translation coordinates: "translate(x, y)" or "translate(x,y)"
                     match = re.search(
