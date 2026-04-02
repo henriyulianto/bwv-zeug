@@ -15,7 +15,11 @@ Features:
 import subprocess
 import sys
 import argparse
+import shutil
 from pathlib import Path
+
+# SVGO_CONFIG = 'E:\\projects\\tugas_akhir\\backend\\bwv-zeug\\svgo.config.js'
+SVGO_CONFIG = str(Path(__file__).parent.parent / 'svgo.config.js')
 
 
 def optimize_svg(input_file, output_file):
@@ -51,10 +55,19 @@ def optimize_svg(input_file, output_file):
     # Run SVGO optimization
     print(f"   🔧 Running SVGO optimization...")
 
+    # Find SVGO executable
+    svgo_path = shutil.which('svgo')
+    if not svgo_path:
+        print(f"❌ SVGO not found in PATH. Please install with: npm install -g svgo")
+        return False
+
+    print(f"   📍 Using SVGO at: {svgo_path}")
+
     try:
         result = subprocess.run([
-            'npx', 'svgo', str(input_path), 
-            '--config', '/home/henri/projects/bwv-zeug/svgo.config.js',
+            svgo_path,  # Use full path to SVGO executable
+            '--input', str(input_path),
+            '--config', SVGO_CONFIG,
             '--output', str(output_path)
         ], capture_output=True, text=True, timeout=60)
     except subprocess.TimeoutExpired:

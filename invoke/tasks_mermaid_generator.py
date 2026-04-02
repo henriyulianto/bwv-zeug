@@ -852,6 +852,7 @@ def generate_full_tasks(mermaid_file):
 
 
 def main():
+    import platform
     parser = argparse.ArgumentParser(
         description='Generate tasks from mermaid pipeline diagrams',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -897,7 +898,11 @@ Examples:
     if tasks_content:
         # Write to output file
         try:
-            output_path.write_text(tasks_content, encoding='utf-8')
+            if platform.system() == 'Windows':
+                output_path.write_text(
+                    rf"{tasks_content.replace('\\', '/')}", encoding='utf-8')
+            else:
+                output_path.write_text(tasks_content, encoding='utf-8')
             print(f"✅ Successfully generated: {output_path}")
             print(f"📊 File size: {len(tasks_content):,} characters")
 
