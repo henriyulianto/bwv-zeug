@@ -682,7 +682,8 @@ def clean_svg(svg_root):
 
         for child in a_elem:
             if child.tag == 'path' or child.tag.endswith('}path'):
-                path_elements.append(child)
+                if a_elem.get('class') == 'notangka':
+                    path_elements.append(child)
             elif child.tag == 'text' or child.tag.endswith('}text'):
                 text_elements.append(child)
             elif child.tag == 'line' or child.tag.endswith('}line'):
@@ -790,6 +791,10 @@ def clean_svg(svg_root):
             new_group.set('data-ref', simplified_ref)
 
             parent = parent_map.get(a_elem)
+
+            print(f"a_elem class = {a_elem.get('class')}")
+            print(
+                f"parent class = {parent.get('class') if parent is not None else None}")
             if parent is not None:
                 a_index = list(parent).index(a_elem)
                 parent.insert(a_index, new_group)

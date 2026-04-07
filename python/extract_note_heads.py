@@ -105,11 +105,11 @@ def load_project_tolerance():
 # V2: Keep original regex but add better \rest detection
 # Matches: letter name + optional accidentals + optional octave marks
 note_regex = re.compile(r"""
-            ^                 # start of string
-            ([a-g])           # pitch letter
-            (isis|eses|is|es)?# optional accidentals
-            \s*               # optional whitespace
-            [,']*             # optional octave marks
+            ^                   # start of string
+            ([a-g])             # pitch letter
+            (isis|eses|is|es|s)?# optional accidentals
+            \s*                 # optional whitespace
+            [,']*               # optional octave marks
         """, re.VERBOSE)
 
 # =============================================================================
@@ -306,6 +306,9 @@ def extract_text_from_data_ref(data_ref):
     - "d''2" -> "d''2" (note with duration)
     - "bes," -> "bes," (note with octave)
     """
+
+    import platform
+
     try:
         # Parse normalized data-ref format: "file.ly:line:column"
         if not data_ref:
@@ -315,10 +318,19 @@ def extract_text_from_data_ref(data_ref):
         if len(parts) < 3:
             return "(invalid data-ref format)"
 
-        file_path = parts[0]
-        line = int(parts[1]) - 1      # Convert to 0-based indexing
-        # Convert LilyPond 1-based column to Python 0-based index
-        col_start = int(parts[2]) - 1
+        if platform.system() == "Windows":
+            file_path = f"{parts[0]}:{parts[1]}"
+            line = int(parts[2]) - 1      # Convert to 0-based indexing
+            # Convert LilyPond 1-based column to Python 0-based index
+            col_start = int(parts[3]) - 1
+        else:
+            file_path = parts[0]
+            line = int(parts[1]) - 1      # Convert to 0-based indexing
+            # Convert LilyPond 1-based column to Python 0-based index
+            col_start = int(parts[2]) - 1
+
+        print(
+            f"[DEBUG] file_path, line, col: {file_path}, {line}, {col_start}")
 
         # Read the specific LilyPond source file referenced in the data-ref
         with open(file_path, encoding="utf-8") as f:
@@ -586,12 +598,14 @@ def main():
             data_ref = find_data_ref_in_anchor(a, NS)
 
             if not data_ref or a.get("class") == "notangka-dot":
-                # Skip elements without data-ref (not musical content) 
+                # Skip elements without data-ref (not musical content)
                 # or not angka dot elements
                 continue
 
             # Extract pitch information from the data-ref by parsing LilyPond source
+            print(f"[DEBUG] data_ref = {data_ref}")
             snippet = extract_text_from_data_ref(data_ref)
+            print(f"[DEBUG] snippet = {snippet}")
 
             # Skip if we couldn't extract valid pitch information
             if snippet is not None:
@@ -606,7 +620,8 @@ def main():
                     if "scale" in transform:
                         print(
                             f"⚠️  Scale transform found for notehead: {data_ref} [{snippet}]")
-                        transform = g.find("svg:g", NS).attrib.get("transform", "")
+                        transform = g.find("svg:g", NS).attrib.get(
+                            "transform", "")
 
                     # Parse translation coordinates: "translate(x, y)" or "translate(x,y)"
                     match = re.search(
@@ -702,7 +717,7 @@ def main():
 
             # Count distinct time positions (chord groups)
             for i in range(1, len(x_positions)):
-                if abs(x_positions[i] - x_positions[i-1]) > tolerance:
+                if abs(x_positions[i] - x_positions[i - 1]) > tolerance:
                     unique_x_groups += 1
 
             print(f"   📊 Identified {unique_x_groups} distinct time positions")
